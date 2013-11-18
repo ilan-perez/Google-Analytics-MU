@@ -1,19 +1,20 @@
 <?php
 /*
-Plugin Name: Google Analytics MU
-Plugin URI: https://wordpress.org/extend/plugins/google-analytics-mu/
-Description: Collect network-wide Google Analytics statistics and allow site admins to use their own tracking codes
-Version: 2.4-dev
-Author: Foe Services Labs
-Author URI: http://labs.foe-services.de
-License: GPLv2
-License URI: http://www.gnu.org/licenses/gpl-2.0.html
-Network: true
-Text Domain: google-analytics-mu
-Domain Path: /languages
+Plugin Name:    Google Analytics MU
+Plugin URI:     https://github.com/foe-services/google-analytics-mu
+Description:    Collect network-wide Google Analytics statistics and allow site admins to use their own tracking codes
+Version:        2.4
+Author:         Foe Services Labs and Ilan Perez
+Author URI:     http://labs.foe-services.de and http://ilanperez.com
+License:        GPL2
+Text Domain:    google-analytics-mu
+Domain Path:    /languages/
+*/
 
-    Copyright 2012-2013  Foe Services Labs (http://labs.foe-services.de)
-    Copyright 2011-2012  Niklas Jonsson  (email : niklas@darturonline.se)
+/*  
+	Copyright 2013  Ilan Perez (email : ilan.perez@gmail.com)
+	Copyright 2012  Foe Services Labs (http://labs.foe-services.de)
+    Copyright 2011-12  Niklas Jonsson  (email : niklas@darturonline.se)
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License, version 2, as 
@@ -34,6 +35,7 @@ add_action('admin_menu', 'ga_mu_plugin_menu');
 add_action('wp_head', 'ga_mu_plugin_add_script_to_head');
 
 define('UAID_OPTION','ga_mu_uaid');
+define('TRACKING_TYPE','ga_mu_tracking_code_type');
 define('MAINDOMAIN_OPTION', 'ga_mu_maindomain');
 define('SITE_SPECIFIC_ALLOWED_OPTION','ga_mu_site_specific_allowed');
 define('ANONYMIZEIP_ACTIVATED_OPTION','ga_mu_anonymizeip_activated');
@@ -49,6 +51,7 @@ endif;
 if ( !function_exists('ga_mu_plugin_menu') ) :
 	function ga_mu_plugin_menu() {
 		switch_to_blog(MAIN_BLOG_ID);
+		$trackingCodeType = get_option(TRACKING_TYPE);
 		$siteSpecificAllowed = get_option(SITE_SPECIFIC_ALLOWED_OPTION);
 		restore_current_blog();
 		if (isset($siteSpecificAllowed) && $siteSpecificAllowed != '' && $siteSpecificAllowed != '0') {
@@ -84,15 +87,6 @@ if ( !function_exists('google_analytics_mu_options') ) :
                     </style>
                         <?php screen_icon( 'plugins' ); ?>
 			<h2><?php _e('Google Analytics Settings', 'google-analytics-mu') ?></h2>
-                        
-                        <?php if ($blog_id == MAIN_BLOG_ID) { ?>
-                        <div style="border-radius:4px;-moz-border-radius:4px;-webkit-border-radius:4px;background:#feb1b1;border:1px solid #fe9090;color:#820101;font-size:12px;font-weight:bold;height:auto;margin:10px 15px 0 0;font-family:arial;overflow:hidden;padding:4px 10px 6px;" id="update_sb">
-                            <div style="margin:2px 10px 0 0;float:left;line-height:18px;padding-left:22px; padding:10px 10px 10px 30px;">
-                                <?php _e('As this is the main blog it uses the same ID as the network do. Changing this would change the networkwide ID; that is why it is disabled here.', 'google-analytics-mu'); ?>
-                            </div>
-                        </div>
-                        <?php } ?>
-                        
 			<form name="form" action="" method="post">
                             <ul>
                                 <li>
@@ -145,6 +139,12 @@ if ( !function_exists('google_analytics_mu_options') ) :
                                 <p>
                                     <input type="submit" id="submit" name="submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
                                 </p>
+                                <p>
+                                    <?php
+					if ($blog_id == MAIN_BLOG_ID) {
+						_e('As this is the main blog it uses the same ID as the network do. Changing this would change the networkwide ID; that is why it is disabled here.', 'google-analytics-mu');
+                                    } ?>
+                                </p>
                             </ul>
 			</form>
 		</div>
@@ -185,6 +185,7 @@ if ( !function_exists('google_analytics_mu_network_options') ) :
 				switch_to_blog(MAIN_BLOG_ID);
 				update_option(UAID_OPTION, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['UAIDsuper']));
                                 update_option(MAINDOMAIN_OPTION, preg_replace('/[^a-zA-Z\d\-\.]/','',$_POST['MainDomain']));
+                                update_option(TRACKING_TYPE, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['TrackingCodeType']));
                                 update_option(SITE_SPECIFIC_ALLOWED_OPTION, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['AllowSiteSpecificAccounts']));
                                 update_option(ANONYMIZEIP_ACTIVATED_OPTION, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['AnonymizeIpActivated']));
                                 update_option(PAGESPEED_ACTIVATED_OPTION, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['PageSpeedActivated']));
@@ -194,14 +195,9 @@ if ( !function_exists('google_analytics_mu_network_options') ) :
 			<?php }	} ?>
 		
 		<div class="wrap">
-                        <style type="text/css">
-                            .tab-body {
-                                padding: 10px;
-                                border-style: solid;
-                                border-width: 0 1px 1px 1px;
-                                border-color: #CCCCCC;
-                            }
+                        <style>
                             .indent {padding-left: 2em}
+                            h4 {margin-bottom: 0;}
                         </style>
                         <?php screen_icon( 'plugins' ); ?>
 			<h2><?php _e('Google Analytics Network Settings', 'google-analytics-mu') ?></h2>
@@ -222,7 +218,7 @@ if ( !function_exists('google_analytics_mu_network_options') ) :
                         </h2>
 
 			<?php if (current_user_can('manage_network') && $active_tab == 'about') { ?>
-                            <div class="tab-body">
+                            <div class="wrap indent">
 
                                 <h1>Google Analytics MU - WordPress Plugin</h1>
                                 <p>
@@ -255,12 +251,12 @@ if ( !function_exists('google_analytics_mu_network_options') ) :
                                 </ul>
                                 <p><?php printf( __('Help to translate at %s', 'google-analytics-mu'), '<a href="https://translate.foe-services.de/projects/google-analytics-mu" target="_blank">https://translate.foe-services.de/projects/google-analytics-mu</a>'); ?></p>
 
-                                <h3><?php _e('License', 'google-analytics-mu'); ?>: <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_blank">GPLv2</a></h3>
+                                <h3><?php _e('License', 'google-analytics-mu'); ?></h3> <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_blank">GPLv2</a>
 
                             </div><!-- /.wrap --> 
 					
                         <?php } elseif (current_user_can('manage_network')) { ?>
-                            <div class="tab-body">
+                            <div class="wrap">
                             <form name="form" action="" method="post">
                                 <ul>
                                     <li>
@@ -274,6 +270,24 @@ if ( !function_exists('google_analytics_mu_network_options') ) :
                                             <?php _e('Format: UA-01234567-8', 'google-analytics-mu')?>
                                         </p>
                                         <p class="indent"><?php printf( __('Go to your %s to find your Property-ID', 'google-analytics-mu'), '<a href="https://www.google.com/analytics/web/" target="_blank">' . __('Google Analytics Dashboard', 'google-analytics-mu') . '</a>') ?></p>
+                                    </li>
+								    <li>
+                                        <h4><?php _e('Tracking Code Type', 'google-analytics-mu') ?>:</h4>
+                                        <p class="indent">
+                                            <input type="checkbox" id="TrackingCodeType" name="TrackingCodeType" value="universal"
+                                            <?php
+                                            switch_to_blog(MAIN_BLOG_ID);
+                                            $trackingCodeType = get_option(TRACKING_TYPE);
+                                            restore_current_blog();
+                                            if (isset($trackingCodeType) && $trackingCodeType != '' && $trackingCodeType != '0') {
+                                                    echo 'checked="checked"';
+                                            }
+                                            ?>
+                                             /> <?php _e('Universal', 'google-analytics-mu') ?>
+                                        </p>
+                                        <p class="indent">
+                                            <?php _e('If you have migrated your Google Analytics account to the new universal code, check this box.', 'google-analytics-mu')?>
+                                        </p>
                                     </li>
                                     <li>
                                         <h4><?php _e('Network domain', 'google-analytics-mu') ?>:</h4>
@@ -360,6 +374,7 @@ if ( !function_exists('ga_mu_plugin_add_script_to_head') ) :
 		$maindomain = get_option(MAINDOMAIN_OPTION);
                 $anonymizeIpNetwork = get_option(ANONYMIZEIP_ACTIVATED_OPTION);
                 $PageSpeedNetwork = get_option(PAGESPEED_ACTIVATED_OPTION);
+		$trackingCodeType = get_option(TRACKING_TYPE);
 		$siteSpecificAllowed = get_option(SITE_SPECIFIC_ALLOWED_OPTION);
 		restore_current_blog();
 
@@ -391,43 +406,94 @@ if ( !function_exists('ga_mu_plugin_add_script_to_head') ) :
 		{
                 $prefix = ''
                 ?>
-<script type="text/javascript">
-var _gaq = _gaq || [];
-<?php
-if ($super) { ?>
-_gaq.push(['_setAccount', '<?php echo $uaidsuper ?>']);
-<?php
-if ($maindomain)
-{ ?>
-_gaq.push(['_setDomainName', '<?php echo $maindomain ?>']);
-<?php
-} ?>
-_gaq.push(['_trackPageview']);
-<?php 
-if (isset($PageSpeedNetwork) && $PageSpeedNetwork != '' && $PageSpeedNetwork != '0')
-{ ?>
-_gaq.push(['_trackPageLoadTime']);
-<?php }
-if (isset($anonymizeIpNetwork) && $anonymizeIpNetwork != '' && $anonymizeIpNetwork != '0')
-{ ?>
-_gaq.push(['_gat._anonymizeIp']);
-<?php } $prefix = 'b.'; }
-if ($user) { ?>
-_gaq.push(['<?php echo $prefix ?>_setAccount', '<?php echo $uaid ?>']);
-_gaq.push(['<?php echo $prefix ?>_trackPageview']);
-<?php
-if (isset($PageSpeed) && $PageSpeed != '' && $PageSpeed != '0')
-{ ?>
-    _gaq.push(['<?php echo $prefix ?>_trackPageLoadTime']);
-<?php }
-if (isset($anonymizeIp) && $anonymizeIp != '' && $anonymizeIp != '0')
-{ ?>
-_gaq.push(['<?php echo $prefix ?>_gat._anonymizeIp']);
-<?php } } ?>
-(function() {
-var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-})();
-</script>			
-<?php } } endif; ?>
+                <script type="text/javascript">
+               
+                <?php
+                if ($super) {
+				  if($trackingCodeType == "universal"){
+					  
+                        ?>
+					
+					  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+					  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+					  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+					  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+					
+					  ga('create', '<?php echo $uaidsuper ?>', '<?php echo $maindomain ?>');
+					  ga('send', 'pageview');
+
+						
+						
+						  <?php }else{ ?>
+						   var _gaq = _gaq || [];
+                        _gaq.push(['_setAccount', '<?php echo $uaidsuper ?>']);
+                        <?php
+                        if ($maindomain)
+                        { ?>
+                        _gaq.push(['_setDomainName', '<?php echo $maindomain ?>']);
+                        <?php
+                        } ?>
+                        _gaq.push(['_trackPageview']);
+                        <?php 
+                        if (isset($PageSpeedNetwork) && $PageSpeedNetwork != '' && $PageSpeedNetwork != '0')
+                        { ?>
+                        _gaq.push(['_trackPageLoadTime']);
+                        <?php }
+                        if (isset($anonymizeIpNetwork) && $anonymizeIpNetwork != '' && $anonymizeIpNetwork != '0')
+                        { ?>
+                        _gaq.push(['_gat._anonymizeIp']);
+                        <?php
+                        }                                        
+                        $prefix = 'b.'; ?>
+						    (function() {
+                var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+                ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+                var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+                  })();
+						<?php
+                	}
+				}
+                if ($user) {
+                        if($trackingCodeType == "universal"){
+					  
+                        ?>
+					
+					  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+					  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+					  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+					  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+					
+					  ga('create', '<?php echo $uaid ?>', '<?php echo $maindomain ?>');
+					  ga('send', 'pageview');
+
+						
+						
+						  <?php }else{ ?>
+						 var _gaq = _gaq || [];
+                        _gaq.push(['<?php echo $prefix ?>_setAccount', '<?php echo $uaid ?>']);
+                        _gaq.push(['<?php echo $prefix ?>_trackPageview']);
+                        <?php
+                        if (isset($PageSpeed) && $PageSpeed != '' && $PageSpeed != '0')
+                        { ?>
+                            _gaq.push(['<?php echo $prefix ?>_trackPageLoadTime']);
+                        <?php }
+                        if (isset($anonymizeIp) && $anonymizeIp != '' && $anonymizeIp != '0')
+                        { ?>
+                        _gaq.push(['<?php echo $prefix ?>_gat._anonymizeIp']);
+                        <?php
+                        } ?>
+						  (function() {
+                var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+                ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+                var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+                  })();
+				  <?php
+                }
+				}
+                ?>
+            
+                </script>			
+                <?php }
+	}
+endif;
+?>
