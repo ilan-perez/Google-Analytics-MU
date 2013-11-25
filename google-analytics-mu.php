@@ -36,11 +36,14 @@ add_action('wp_head', 'ga_mu_plugin_add_script_to_head');
 
 define('UAID_OPTION','ga_mu_uaid');
 define('TRACKING_TYPE','ga_mu_tracking_code_type');
+define('REMARKETING_SWITCH','ga_mu_remarketing_switch');
 define('MAINDOMAIN_OPTION', 'ga_mu_maindomain');
 define('SITE_SPECIFIC_ALLOWED_OPTION','ga_mu_site_specific_allowed');
 define('ANONYMIZEIP_ACTIVATED_OPTION','ga_mu_anonymizeip_activated');
 define('PAGESPEED_ACTIVATED_OPTION','ga_mu_pagespeed_activated');
 define('MAIN_BLOG_ID',1);
+
+
 
 if ( !function_exists('ga_mu_plugin_network_menu') ) :
 	function ga_mu_plugin_network_menu() {
@@ -52,6 +55,7 @@ if ( !function_exists('ga_mu_plugin_menu') ) :
 	function ga_mu_plugin_menu() {
 		switch_to_blog(MAIN_BLOG_ID);
 		$trackingCodeType = get_option(TRACKING_TYPE);
+		$RemarketingSwitch = get_option(REMARKETING_SWITCH);
 		$siteSpecificAllowed = get_option(SITE_SPECIFIC_ALLOWED_OPTION);
 		restore_current_blog();
 		if (isset($siteSpecificAllowed) && $siteSpecificAllowed != '' && $siteSpecificAllowed != '0') {
@@ -186,6 +190,7 @@ if ( !function_exists('google_analytics_mu_network_options') ) :
 				update_option(UAID_OPTION, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['UAIDsuper']));
                                 update_option(MAINDOMAIN_OPTION, preg_replace('/[^a-zA-Z\d\-\.]/','',$_POST['MainDomain']));
                                 update_option(TRACKING_TYPE, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['TrackingCodeType']));
+								update_option(REMARKETING_SWITCH, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['RemarketingSwitch']));
                                 update_option(SITE_SPECIFIC_ALLOWED_OPTION, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['AllowSiteSpecificAccounts']));
                                 update_option(ANONYMIZEIP_ACTIVATED_OPTION, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['AnonymizeIpActivated']));
                                 update_option(PAGESPEED_ACTIVATED_OPTION, preg_replace('/[^a-zA-Z\d\-]/','',$_POST['PageSpeedActivated']));
@@ -281,12 +286,33 @@ if ( !function_exists('google_analytics_mu_network_options') ) :
                                             restore_current_blog();
                                             if (isset($trackingCodeType) && $trackingCodeType != '' && $trackingCodeType != '0') {
                                                     echo 'checked="checked"';
-                                            }
+											  $hideDemoInt = true;
+											}else{
+											 $hideDemoInt = false;
+											}
                                             ?>
                                              /> <?php _e('Universal', 'google-analytics-mu') ?>
                                         </p>
                                         <p class="indent">
                                             <?php _e('If you have migrated your Google Analytics account to the new universal code, check this box.', 'google-analytics-mu')?>
+                                        </p>
+                                    </li>
+								  <li style="<?php echo (!$hideDemoInt ? "" : "display:none;" ); ?>">
+                                        <h4><?php _e('Demographics and Interest Reports', 'google-analytics-mu') ?>:</h4>
+                                        <p class="indent">
+                                            <input type="checkbox" id="RemarketingSwitch" name="RemarketingSwitch" value="on"
+                                            <?php
+                                            switch_to_blog(MAIN_BLOG_ID);
+                                            $RemarketingSwitch = get_option(REMARKETING_SWITCH);
+                                            restore_current_blog();
+                                            if (isset($RemarketingSwitch) && $RemarketingSwitch != '' && $RemarketingSwitch != '0') {
+                                                    echo 'checked="checked"';
+                                            }
+                                            ?>
+                                             /> <?php _e('On', 'google-analytics-mu') ?>
+                                        </p>
+                                        <p class="indent">
+                                            <?php _e('If you have enabled Demographics and Interest Reports in Google Analytics account, check this box. Note: This is not supported by GA Universal Code <a href="https://developers.google.com/analytics/devguides/collection/upgrade/">More Info</a>', 'google-analytics-mu')?>
                                         </p>
                                     </li>
                                     <li>
@@ -375,6 +401,7 @@ if ( !function_exists('ga_mu_plugin_add_script_to_head') ) :
                 $anonymizeIpNetwork = get_option(ANONYMIZEIP_ACTIVATED_OPTION);
                 $PageSpeedNetwork = get_option(PAGESPEED_ACTIVATED_OPTION);
 		$trackingCodeType = get_option(TRACKING_TYPE);
+				$RemarketingSwitch = get_option(REMARKETING_SWITCH);
 		$siteSpecificAllowed = get_option(SITE_SPECIFIC_ALLOWED_OPTION);
 		restore_current_blog();
 
@@ -447,9 +474,19 @@ if ( !function_exists('ga_mu_plugin_add_script_to_head') ) :
                         $prefix = 'b.'; ?>
 						    (function() {
                 var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-                ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-                var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-                  })();
+				<?php 
+				if($RemarketingSwitch == "on"){
+					  
+                        ?>
+				
+              
+             ga.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + 'stats.g.doubleclick.net/dc.js';
+				<?php }else{ ?>
+					  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+				<?php	} ?>
+                    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+				  })();
+				  
 						<?php
                 	}
 				}
@@ -484,7 +521,16 @@ if ( !function_exists('ga_mu_plugin_add_script_to_head') ) :
                         } ?>
 						  (function() {
                 var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-                ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+          <?php 
+				if($RemarketingSwitch == "on"){
+					  
+                        ?>
+				
+              
+             ga.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + 'stats.g.doubleclick.net/dc.js';
+				<?php }else{ ?>
+					  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+				<?php	} ?>
                 var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
                   })();
 				  <?php
